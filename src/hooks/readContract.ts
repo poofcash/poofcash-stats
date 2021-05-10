@@ -87,21 +87,21 @@ export const getDeposits = async (
   library: any,
   tornadoAddress: string,
   filters?: Array<any>
-) => {
+): Promise<[Array<any>, Array<any>]> => {
   const tornado = getContract(tornadoAddress, ERC20_TORNADO_ABI, library);
   const depositFilter = tornado.filters.Deposit(filters);
   if (!depositFilter) {
-    return [];
+    return [[], []];
   }
   try {
     const events = await tornado.queryFilter(depositFilter, 0, "latest");
     const blockPromises = events.map(({ blockNumber }) => {
       return library.provider.kit.connection.getBlock(blockNumber);
     });
-    return await Promise.all(blockPromises);
+    return [events, await Promise.all(blockPromises)];
   } catch (e) {
     console.error(e);
-    return [];
+    return [[], []];
   }
 };
 
