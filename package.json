@@ -11,12 +11,13 @@
     "@ethersproject/providers": "^5.0.24",
     "@ethersproject/solidity": "^5.0.10",
     "@ledgerhq/hw-transport-webusb": "^5.46.0",
-    "@poofcash/poof-token": "^1.0.1",
+    "@poofcash/poof-kit": "^1.0.15",
     "@rebass/forms": "^4.0.6",
     "@reduxjs/toolkit": "^1.5.0",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
+    "@typechain/web3-v1": "^3.0.0",
     "@types/jest": "^26.0.15",
     "@types/node": "^12.0.0",
     "@types/react": "^17.0.0",
@@ -44,16 +45,18 @@
     "react-scripts": "4.0.3",
     "recharts": "^2.0.9",
     "theme-ui": "^0.3.5",
+    "typechain": "^5.1.1",
     "typescript": "^4.1.2",
     "web-vitals": "^1.0.1",
     "websnark": "git+https://github.com/tornadocash/websnark.git#2041cfa5fa0b71cd5cca9022a4eeea4afe28c9f7"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "yarn typechain && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "typechain": "typechain --target=web3-v1 'src/**/abis/**/*.json' --out-dir src/generated/"
   },
   "eslintConfig": {
     "extends": [
