@@ -1,9 +1,6 @@
 import React from "react";
 import moment from "moment";
 import ERC20_ABI from "abis/erc20.json";
-import { network } from "connectors";
-import { useWeb3React } from "@web3-react/core";
-import { NetworkContextName } from "index";
 import { getDeposits } from "hooks/readContract";
 import { newKit } from "@celo/contractkit";
 import { RPC_URL } from "config";
@@ -21,9 +18,11 @@ const getVolume = async (
   fromTimestamp: number,
   toTimestamp: number
 ) => {
+  console.log(fromTimestamp, toTimestamp);
   if (depositEvents.length === 0) {
     return 0;
   }
+  console.log(depositEvents);
   return addresses.reduce((acc, [amt], idx) => {
     const volume =
       Number(amt) *
@@ -35,45 +34,16 @@ const getVolume = async (
   }, 0);
 };
 
-const getUniqueUsers = async (
-  depositEvents: Array<[Array<any>, Array<any>]>
-) => {
-  if (depositEvents.length === 0) {
-    return 0;
-  }
-  const txns = await Promise.all(
-    depositEvents
-      .map((arr) => arr[0])
-      .flat()
-      .map((event) => event.getTransactionReceipt())
-  );
-  return txns.reduce((acc, curr) => ({ ...acc, [curr.from]: true }), {});
-};
-
 const kit = newKit(RPC_URL);
 export const useStats = (
   currencyAddress: string,
   addresses: Array<[string, string]>
 ) => {
-  const token = (new kit.web3.eth.Contract(
-    ERC20_ABI as AbiItem[],
-    currencyAddress
-  ) as unknown) as Erc20;
-
-  const { activate: activateNetwork, library } = useWeb3React(
-    NetworkContextName
-  );
-  React.useEffect(() => {
-    if (!library) {
-      activateNetwork(network);
-    }
-  }, [library, activateNetwork]);
-
+  const now = React.useMemo(() => moment.utc(), []);
+  const nowInSeconds = React.useMemo(() => now.valueOf() / 1000, [now]);
   const [totalVolume, setTotalVolume] = React.useState(0);
   const [dailyVolume, setDailyVolume] = React.useState(0);
   const [volumeByDay, setVolumeByDay] = React.useState<Array<DailyVolume>>([]);
-
-  const [uniqueUsers, setUniqueUsers] = React.useState(0);
 
   const [totalValueLocked, setTotalValueLocked] = React.useState(0);
 
@@ -81,12 +51,17 @@ export const useStats = (
     Array<[Array<any>, Array<any>]>
   >([]);
   React.useEffect(() => {
-    Promise.all(
-      addresses.map(([_, address]) => getDeposits(library, address))
-    ).then(setAllDeposits);
-  }, [library, addresses]);
+    Promise.all(addresses.map(([_, address]) => getDeposits(address))).then(
+      setAllDeposits
+    );
+  }, [addresses]);
 
   React.useEffect(() => {
+    const token = (new kit.web3.eth.Contract(
+      ERC20_ABI as AbiItem[],
+      currencyAddress
+    ) as unknown) as Erc20;
+
     Promise.all(
       Object.values(addresses).map(([_, address]) =>
         token.methods.balanceOf(address).call()
@@ -99,15 +74,14 @@ export const useStats = (
         }, 0);
       setTotalValueLocked(tvl);
     });
-
-    const now = moment.utc().valueOf() / 1000;
-    getVolume(addresses, allDeposits, 0, now).then(setTotalVolume);
+    getVolume(addresses, allDeposits, 0, nowInSeconds).then(setTotalVolume);
     getVolume(
       addresses,
       allDeposits,
-      moment.utc().add(-24, "hours").valueOf() / 1000,
-      now
+      now.clone().add(-24, "hours").valueOf() / 1000,
+      nowInSeconds
     ).then(setDailyVolume);
+
     Promise.all(
       Array(7)
         .fill(0)
@@ -115,12 +89,12 @@ export const useStats = (
           return getVolume(
             addresses,
             allDeposits,
-            moment
-              .utc()
+            now
+              .clone()
               .add(-24 * (idx + 1), "hours")
               .valueOf() / 1000,
-            moment
-              .utc()
+            now
+              .clone()
               .add(-24 * idx, "hours")
               .valueOf() / 1000
           );
@@ -133,15 +107,12 @@ export const useStats = (
         }))
       );
     });
-
-    getUniqueUsers(allDeposits).then(setUniqueUsers);
-  }, [allDeposits, addresses, token.methods]);
+  }, [allDeposits, addresses, currencyAddress, now, nowInSeconds]);
 
   return {
     totalVolume,
     dailyVolume,
     volumeByDay,
-    uniqueUsers,
     totalValueLocked,
   };
 };

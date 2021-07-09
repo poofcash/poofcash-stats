@@ -6,6 +6,10 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { useWeb3React } from "@web3-react/core";
 import ERC20_TORNADO_ABI from "abis/erc20tornado.json";
 import { NetworkContextName } from "index";
+import { newKit } from "@celo/contractkit";
+import { RPC_URL } from "config";
+import { Erc20tornado } from "generated/erc20tornado";
+import { AbiItem } from "web3-utils";
 
 type MethodArg = string | number | BigNumber;
 type OptionalMethodInputs =
@@ -83,20 +87,21 @@ export function useGetTokenBalance(
   return getTokenBalance;
 }
 
+const kit = newKit(RPC_URL);
 export const getDeposits = async (
-  library: any,
-  tornadoAddress: string,
-  filters?: Array<any>
+  tornadoAddress: string
 ): Promise<[Array<any>, Array<any>]> => {
-  const tornado = getContract(tornadoAddress, ERC20_TORNADO_ABI, library);
-  const depositFilter = tornado.filters.Deposit(filters);
-  if (!depositFilter) {
-    return [[], []];
-  }
+  const tornado = (new kit.web3.eth.Contract(
+    ERC20_TORNADO_ABI as AbiItem[],
+    tornadoAddress
+  ) as unknown) as Erc20tornado;
   try {
-    const events = await tornado.queryFilter(depositFilter, 0, "latest");
+    const events = await tornado.getPastEvents("Deposit", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
     const blockPromises = events.map(({ blockNumber }) => {
-      return library.provider.kit.connection.getBlock(blockNumber);
+      return kit.connection.getBlock(blockNumber);
     });
     return [events, await Promise.all(blockPromises)];
   } catch (e) {

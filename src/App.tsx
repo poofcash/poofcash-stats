@@ -64,7 +64,6 @@ const App = () => {
     totalVolume: totalCeloVolume,
     dailyVolume: dailyCeloVolume,
     volumeByDay: celoVolumeByDay,
-    uniqueUsers: celoUsers,
     totalValueLocked: totalCeloLocked,
   } = useStats(celo, celoAddresses);
 
@@ -72,20 +71,15 @@ const App = () => {
     totalVolume: totalRCeloVolume,
     dailyVolume: dailyRCeloVolume,
     volumeByDay: rCeloVolumeByDay,
-    uniqueUsers: rCeloUsers,
     totalValueLocked: totalRCeloLocked,
   } = useStats(rcelo, rCeloAddresses);
 
-  const proxy = React.useMemo(
-    () =>
-      (new kit.web3.eth.Contract(
-        TornadoProxyABI as AbiItem[],
-        mainnetAddresses.PoofProxy.address
-      ) as unknown) as TornadoProxy,
-    []
-  );
   const [proxyUsers, setProxyUsers] = React.useState<string[]>([]);
   React.useEffect(() => {
+    const proxy = (new kit.web3.eth.Contract(
+      TornadoProxyABI as AbiItem[],
+      mainnetAddresses.PoofProxy.address
+    ) as unknown) as TornadoProxy;
     proxy
       .getPastEvents("EncryptedNote", {
         fromBlock: 0,
@@ -96,13 +90,10 @@ const App = () => {
           events.map((event) => event.returnValues.sender as string)
         )
       );
-  }, [proxy]);
+  }, []);
 
   const uniqueUsers = Object.keys(
-    Object.keys(celoUsers)
-      .concat(Object.keys(rCeloUsers))
-      .concat(proxyUsers)
-      .reduce((acc, curr) => ({ ...acc, [curr]: true }), {})
+    proxyUsers.reduce((acc, curr) => ({ ...acc, [curr]: true }), {})
   );
 
   return (
@@ -139,7 +130,7 @@ const App = () => {
         <BarChart data={rCeloVolumeByDay} width={250} height={250}>
           <XAxis dataKey="label" />
           <YAxis
-            width={100}
+            width={120}
             tickFormatter={(value) => value.toLocaleString()}
           />
           <Bar dataKey="volume" fill="#7C71FD" />
