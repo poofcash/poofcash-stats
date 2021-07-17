@@ -10,6 +10,7 @@ import { newKit } from "@celo/contractkit";
 import { RPC_URL } from "config";
 import { Erc20tornado } from "generated/erc20tornado";
 import { AbiItem } from "web3-utils";
+import { EventData } from "web3-eth-contract";
 
 type MethodArg = string | number | BigNumber;
 type OptionalMethodInputs =
@@ -90,7 +91,7 @@ export function useGetTokenBalance(
 const kit = newKit(RPC_URL);
 export const getDeposits = async (
   tornadoAddress: string
-): Promise<[Array<any>, Array<any>]> => {
+): Promise<EventData[]> => {
   const tornado = (new kit.web3.eth.Contract(
     ERC20_TORNADO_ABI as AbiItem[],
     tornadoAddress
@@ -100,13 +101,10 @@ export const getDeposits = async (
       fromBlock: 0,
       toBlock: "latest",
     });
-    const blockPromises = events.map(({ blockNumber }) => {
-      return kit.connection.getBlock(blockNumber);
-    });
-    return [events, await Promise.all(blockPromises)];
+    return events;
   } catch (e) {
     console.error(e);
-    return [[], []];
+    return [];
   }
 };
 

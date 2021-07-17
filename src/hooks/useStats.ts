@@ -6,29 +6,31 @@ import { newKit } from "@celo/contractkit";
 import { RPC_URL } from "config";
 import { fromWei, AbiItem } from "web3-utils";
 import { Erc20 } from "generated/erc20";
+import { useAsyncState } from "./useAsyncState";
+import { EventData } from "web3-eth-contract";
 
 type DailyVolume = {
   label: string;
   volume: number;
 };
 
+const DAY_IN_BLOCKS = (60 * 60 * 24) / 5;
+
 const getVolume = async (
   addresses: Array<[string, string]>,
-  depositEvents: Array<[Array<any>, Array<any>]>,
-  fromTimestamp: number,
-  toTimestamp: number
+  depositEvents: EventData[][],
+  fromBlock: number,
+  toBlock: number
 ) => {
-  console.log(fromTimestamp, toTimestamp);
   if (depositEvents.length === 0) {
     return 0;
   }
-  console.log(depositEvents);
   return addresses.reduce((acc, [amt], idx) => {
     const volume =
       Number(amt) *
-      depositEvents[idx][1].filter(
+      depositEvents[idx].filter(
         (event) =>
-          fromTimestamp <= event.timestamp && event.timestamp <= toTimestamp
+          fromBlock <= event.blockNumber && event.blockNumber <= toBlock
       ).length;
     return acc + volume;
   }, 0);
@@ -44,12 +46,14 @@ export const useStats = (
   const [totalVolume, setTotalVolume] = React.useState(0);
   const [dailyVolume, setDailyVolume] = React.useState(0);
   const [volumeByDay, setVolumeByDay] = React.useState<Array<DailyVolume>>([]);
+  const getLatestBlock = React.useCallback(async () => {
+    return await kit.web3.eth.getBlockNumber();
+  }, []);
+  const [latestBlock] = useAsyncState(0, getLatestBlock);
 
   const [totalValueLocked, setTotalValueLocked] = React.useState(0);
 
-  const [allDeposits, setAllDeposits] = React.useState<
-    Array<[Array<any>, Array<any>]>
-  >([]);
+  const [allDeposits, setAllDeposits] = React.useState<EventData[][]>([]);
   React.useEffect(() => {
     Promise.all(addresses.map(([_, address]) => getDeposits(address))).then(
       setAllDeposits
@@ -74,12 +78,12 @@ export const useStats = (
         }, 0);
       setTotalValueLocked(tvl);
     });
-    getVolume(addresses, allDeposits, 0, nowInSeconds).then(setTotalVolume);
+    getVolume(addresses, allDeposits, 0, latestBlock).then(setTotalVolume);
     getVolume(
       addresses,
       allDeposits,
-      now.clone().add(-24, "hours").valueOf() / 1000,
-      nowInSeconds
+      latestBlock - DAY_IN_BLOCKS,
+      latestBlock
     ).then(setDailyVolume);
 
     Promise.all(
@@ -89,14 +93,8 @@ export const useStats = (
           return getVolume(
             addresses,
             allDeposits,
-            now
-              .clone()
-              .add(-24 * (idx + 1), "hours")
-              .valueOf() / 1000,
-            now
-              .clone()
-              .add(-24 * idx, "hours")
-              .valueOf() / 1000
+            latestBlock - DAY_IN_BLOCKS * (idx + 1),
+            latestBlock - DAY_IN_BLOCKS * idx
           );
         })
     ).then((dailyVolumes) => {
@@ -107,7 +105,7 @@ export const useStats = (
         }))
       );
     });
-  }, [allDeposits, addresses, currencyAddress, now, nowInSeconds]);
+  }, [allDeposits, addresses, currencyAddress, now, nowInSeconds, latestBlock]);
 
   return {
     totalVolume,
