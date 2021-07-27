@@ -43,6 +43,7 @@ export const useStats = (
 ) => {
   const now = React.useMemo(() => moment.utc(), []);
   const nowInSeconds = React.useMemo(() => now.valueOf() / 1000, [now]);
+  const [tokenSymbol, setTokenSymbol] = React.useState("");
   const [totalVolume, setTotalVolume] = React.useState(0);
   const [dailyVolume, setDailyVolume] = React.useState(0);
   const [volumeByDay, setVolumeByDay] = React.useState<Array<DailyVolume>>([]);
@@ -65,6 +66,8 @@ export const useStats = (
       ERC20_ABI as AbiItem[],
       currencyAddress
     ) as unknown) as Erc20;
+
+    token.methods.symbol().call().then(setTokenSymbol);
 
     Promise.all(
       Object.values(addresses).map(([_, address]) =>
@@ -108,6 +111,7 @@ export const useStats = (
   }, [allDeposits, addresses, currencyAddress, now, nowInSeconds, latestBlock]);
 
   return {
+    tokenSymbol,
     totalVolume,
     dailyVolume,
     volumeByDay,
