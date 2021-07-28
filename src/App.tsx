@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Text, Divider } from "theme-ui";
+import { Container, Text, Divider, Box } from "theme-ui";
 import { Header } from "components/Header";
 import "i18n/config";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,9 @@ import { AbiItem } from "web3-utils";
 import { TornadoProxy } from "generated/TornadoProxy";
 import { PoolStats } from "components/PoolStats";
 import { LabelValue } from "components/LabelValue";
+import { fromWei } from "web3-utils";
+import { RewardsCELO } from "generated/RewardsCELO";
+import RewardsCELOABI from "abis/RewardsCELO.json";
 
 const kit = newKit(RPC_URL);
 const oneGold = kit.web3.utils.toWei("1", "ether");
@@ -27,6 +30,7 @@ const rCeloAddresses: Array<[string, string]> = Object.entries(
 const App = () => {
   const { t } = useTranslation();
   const [celoPrice, setCeloPrice] = React.useState(0);
+  const [rCELOTVL, setRCELOTVL] = React.useState(0);
   const rCeloPrice = celoPrice / 65000;
   React.useEffect(() => {
     kit.contracts.getExchange().then((exchange) => {
@@ -36,7 +40,17 @@ const App = () => {
           setCeloPrice(amountCUSD.toNumber() / Math.pow(10, 18))
         );
     });
-  });
+    const rCeloContract = (new kit.web3.eth.Contract(
+      RewardsCELOABI as AbiItem[],
+      rcelo
+    ) as unknown) as RewardsCELO;
+    rCeloContract.methods
+      .getTotalSupplyCELO()
+      .call()
+      .then((totalSupply) => {
+        setRCELOTVL(Number(fromWei(totalSupply.toString())) * celoPrice);
+      });
+  }, [celoPrice]);
 
   const [proxyUsers, setProxyUsers] = React.useState<string[]>([]);
   React.useEffect(() => {
@@ -78,6 +92,16 @@ const App = () => {
         <Text variant="title" mb={4}>
           {t("title")}
         </Text>
+        <Box sx={{ textAlign: "center" }}>
+          <Text variant="largeNumber" mb={2}>
+            {rCELOTVL.toLocaleString(undefined, {
+              style: "currency",
+              currency: "USD",
+            })}
+          </Text>
+          <Text>rCELO TVL</Text>
+        </Box>
+        <Divider sx={{ my: 4 }} />
         <PoolStats
           tokenAddress={rcelo}
           tokenPools={rCeloAddresses}
