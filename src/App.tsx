@@ -30,15 +30,13 @@ const rCeloAddresses: Array<[string, string]> = Object.entries(
 const App = () => {
   const { t } = useTranslation();
   const [celoPrice, setCeloPrice] = React.useState(0);
+  const [rCeloPrice, setRCeloPrice] = React.useState(0);
   const [rCELOTVL, setRCELOTVL] = React.useState(0);
-  const rCeloPrice = celoPrice / 65000;
   React.useEffect(() => {
     kit.contracts.getExchange().then((exchange) => {
-      exchange
-        .quoteGoldSell(oneGold)
-        .then((amountCUSD) =>
-          setCeloPrice(amountCUSD.toNumber() / Math.pow(10, 18))
-        );
+      exchange.quoteGoldSell(oneGold).then((amountCUSD) => {
+        setCeloPrice(amountCUSD.toNumber() / Math.pow(10, 18));
+      });
     });
     const rCeloContract = (new kit.web3.eth.Contract(
       RewardsCELOABI as AbiItem[],
@@ -47,8 +45,17 @@ const App = () => {
     rCeloContract.methods
       .getTotalSupplyCELO()
       .call()
-      .then((totalSupply) => {
-        setRCELOTVL(Number(fromWei(totalSupply.toString())) * celoPrice);
+      .then((celoTotalSupply) => {
+        setRCELOTVL(Number(fromWei(celoTotalSupply.toString())) * celoPrice);
+        rCeloContract.methods
+          .totalSupply()
+          .call()
+          .then((totalSupply) => {
+            setRCeloPrice(
+              (Number(fromWei(celoTotalSupply)) * celoPrice) /
+                Number(fromWei(totalSupply))
+            );
+          });
       });
   }, [celoPrice]);
 
