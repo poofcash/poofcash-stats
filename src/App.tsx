@@ -3,14 +3,11 @@ import { Container, Text, Divider, Box } from "theme-ui";
 import { Header } from "components/Header";
 import "i18n/config";
 import { useTranslation } from "react-i18next";
-import { deployments, mainnetAddresses } from "@poofcash/poof-kit";
+import { deployments } from "@poofcash/poof-kit";
 import { CHAIN_ID, RPC_URL } from "config";
 import { newKit } from "@celo/contractkit";
-import TornadoProxyABI from "abis/TornadoProxy.json";
 import { AbiItem } from "web3-utils";
-import { TornadoProxy } from "generated/TornadoProxy";
 import { PoolStats } from "components/PoolStats";
-import { LabelValue } from "components/LabelValue";
 import { fromWei } from "web3-utils";
 import { RewardsCELO } from "generated/RewardsCELO";
 import RewardsCELOABI from "abis/RewardsCELO.json";
@@ -59,27 +56,28 @@ const App = () => {
       });
   }, [celoPrice]);
 
-  const [proxyUsers, setProxyUsers] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    const proxy = (new kit.web3.eth.Contract(
-      TornadoProxyABI as AbiItem[],
-      mainnetAddresses.PoofProxy.address
-    ) as unknown) as TornadoProxy;
-    proxy
-      .getPastEvents("EncryptedNote", {
-        fromBlock: 0,
-        toBlock: "latest",
-      })
-      .then((events) =>
-        setProxyUsers(
-          events.map((event) => event.returnValues.sender as string)
-        )
-      );
-  }, []);
+  // TODO: This no longer is accurate because of the PoofPool being used on top
+  // const [proxyUsers, setProxyUsers] = React.useState<string[]>([]);
+  // React.useEffect(() => {
+  //   const proxy = (new kit.web3.eth.Contract(
+  //     TornadoProxyABI as AbiItem[],
+  //     mainnetAddresses.PoofProxy.address
+  //   ) as unknown) as TornadoProxy;
+  //   proxy
+  //     .getPastEvents("EncryptedNote", {
+  //       fromBlock: 0,
+  //       toBlock: "latest",
+  //     })
+  //     .then((events) =>
+  //       setProxyUsers(
+  //         events.map((event) => event.returnValues.sender as string)
+  //       )
+  //     );
+  // }, []);
 
-  const uniqueUsers = Object.keys(
-    proxyUsers.reduce((acc, curr) => ({ ...acc, [curr]: true }), {})
-  );
+  // const uniqueUsers = Object.keys(
+  //   proxyUsers.reduce((acc, curr) => ({ ...acc, [curr]: true }), {})
+  // );
 
   return (
     <Container
@@ -121,10 +119,6 @@ const App = () => {
           tokenPriceUsd={celoPrice}
         />
         <Divider sx={{ my: 4 }} />
-        <LabelValue
-          label={"Total of unique wallets"}
-          value={`${uniqueUsers.length.toLocaleString()} wallets`}
-        />
       </Container>
     </Container>
   );
